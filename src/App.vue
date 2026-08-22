@@ -3,11 +3,11 @@
 </script>
 
 <template>
-  <v-main>
   <v-app>
+  <v-main>
     <RouterView/>
-  </v-app>
   </v-main>
+</v-app>
 </template>
 
 <style scoped></style>
