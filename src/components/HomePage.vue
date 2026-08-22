@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -15,25 +15,12 @@ function submitSearch() {
   router.push({ path: '/search', query: { q: searchQuery.value } })
 }
 
-// Carousel
 const slides = [
   { image: '/images/slide-1.jpg', caption: 'Search from your phone, anywhere in Nairobi' },
   { image: '/images/slide-2.jpg', caption: 'See nearby pharmacies on the map' },
   { image: '/images/slide-3.jpg', caption: 'Compare prices before you travel' },
   { image: '/images/slide-4.jpg', caption: 'Every listing verified and up to date' },
 ]
-const activeSlide = ref(0)
-let carouselTimer = null
-
-onMounted(() => {
-  carouselTimer = setInterval(() => {
-    activeSlide.value = (activeSlide.value + 1) % slides.length
-  }, 4000)
-})
-
-onUnmounted(() => {
-  clearInterval(carouselTimer)
-})
 
 const features = [
   {
@@ -72,6 +59,7 @@ const stats = [
 <template>
   <v-sheet color="background" min-height="100vh">
 
+    <!-- Hero Section -->
     <v-container class="py-12">
       <v-row justify="center">
         <v-col cols="12" md="7" class="text-center">
@@ -80,7 +68,7 @@ const stats = [
           </v-chip>
 
           <div class="hero-title font-weight-bold mb-4">Find medicine near you</div>
-          <div class="text-body-1 text-medium-emphasis mb-8" style="max-width: 560px; margin-left: auto; margin-right: auto;">
+          <div class="text-body-1 text-medium-emphasis mb-8 style-wrapper">
             MediFind connects you to over 1,800 pharmacies across Nairobi, so you never
             have to guess where to find your prescription or overpay for it again.
           </div>
@@ -119,37 +107,35 @@ const stats = [
       </v-row>
     </v-container>
 
+    <!-- Carousel Section -->
     <v-container class="pb-0" style="max-width: 1000px;">
-      <v-sheet rounded="lg" elevation="0" style="overflow: hidden; position: relative; height: 360px;">
-        <div
-          v-for="(slide, i) in slides"
-          :key="i"
-          v-show="i === activeSlide"
-          style="height: 100%; position: relative;"
+      <v-sheet rounded="lg" elevation="0" style="overflow: hidden;">
+        <v-carousel
+          cycle
+          interval="4000"
+          height="360"
+          hide-delimiter-background
+          show-arrows="hover"
+          color="primary"
         >
-          <v-img :src="slide.image" cover height="360" style="position: absolute; inset: 0;" />
-          <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(4,52,44,0.75), rgba(4,52,44,0.05));" />
-          <div class="d-flex align-end pa-6" style="position: absolute; inset: 0;">
-            <div class="text-h6 text-white font-weight-medium">{{ slide.caption }}</div>
-          </div>
-        </div>
+          <v-carousel-item
+            v-for="(slide, i) in slides"
+            :key="i"
+            :src="slide.image"
+            cover
+          >
+            <!-- Overlay Gradient -->
+            <div class="carousel-overlay">
+              <div class="d-flex align-end pa-6 h-100">
+                <div class="text-h6 text-white font-weight-medium">{{ slide.caption }}</div>
+              </div>
+            </div>
+          </v-carousel-item>
+        </v-carousel>
       </v-sheet>
-      <div class="d-flex justify-center mt-3" style="gap: 8px;">
-        <div
-          v-for="(slide, i) in slides"
-          :key="i"
-          @click="activeSlide = i"
-          :style="{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            background: i === activeSlide ? '#0F6E56' : '#D3D1C7',
-          }"
-        />
-      </div>
     </v-container>
 
+    <!-- Features Section -->
     <v-container class="py-12">
       <v-row justify="center">
         <v-col v-for="feature in features" :key="feature.title" cols="12" sm="4">
@@ -165,6 +151,7 @@ const stats = [
       </v-row>
     </v-container>
 
+    <!-- How It Works Section -->
     <v-container id="how-it-works" class="py-12">
       <div class="text-h4 font-weight-bold mb-1">How it works</div>
       <div class="text-body-2 text-medium-emphasis mb-8">
@@ -180,6 +167,7 @@ const stats = [
       </v-row>
     </v-container>
 
+    <!-- Stats Bar -->
     <v-sheet color="primary" class="py-8">
       <v-container>
         <v-row justify="center">
@@ -191,6 +179,7 @@ const stats = [
       </v-container>
     </v-sheet>
 
+    <!-- Footer -->
     <v-sheet color="surface" class="py-8">
       <v-container class="text-center">
         <div class="text-subtitle-1 font-weight-medium mb-1">MediFind</div>
@@ -214,5 +203,17 @@ const stats = [
   font-size: clamp(2.25rem, 5vw, 3.5rem);
   line-height: 1.1;
   letter-spacing: -0.5px;
+}
+
+.style-wrapper {
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.carousel-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(4, 52, 44, 0.75), rgba(4, 52, 44, 0.05));
 }
 </style>
