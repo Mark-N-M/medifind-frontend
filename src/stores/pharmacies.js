@@ -7,12 +7,14 @@ export const usePharmaciesStore = defineStore('pharmacies', {
         id: 1,
         name: "Goodlife Pharmacy - Kilimani",
         location: "Kilimani, Nairobi",
+        area: "Kilimani",
         verified: true
       },
       1: {
         id: 2,
         name: "MyDawa Chemist - CBD",
         location: "Nairobi CBD",
+        area: "CBD",
         verified: true
       }
     }
