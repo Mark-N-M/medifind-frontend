@@ -294,6 +294,17 @@ const filteredPharmacies = computed(() => {
             <!-- Action Buttons -->
             <div class="pt-3 border-t d-flex align-center justify-space-between flex-wrap" style="gap: 8px;">
               <v-btn
+                :to="'/pharmacy/' + pharmacy.id"
+                variant="outlined"
+                color="primary"
+                density="comfortable"
+                prepend-icon="mdi-account-details-outline"
+                class="text-none rounded-lg px-3"
+              >
+                View Profile
+              </v-btn>
+
+              <v-btn
                 :href="`tel:${pharmacy.phone}`"
                 variant="text"
                 density="comfortable"
