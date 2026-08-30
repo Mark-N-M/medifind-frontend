@@ -257,18 +257,32 @@ const filteredMedicines = computed(() => {
               </template>
             </div>
 
-            <!-- Expandable Pharmacy Accordion Button -->
-            <div v-if="getStockForMedicine(medicine.id).length > 0">
-              <v-btn
-                variant="text"
-                density="compact"
-                color="primary"
-                class="px-0 text-none font-weight-medium"
-                @click="toggleExpand(medicine.id)"
-              >
-                {{ expandedMedicines.includes(medicine.id) ? 'Hide pharmacies' : `Show ${getStockForMedicine(medicine.id).length} pharmacies` }}
-                <v-icon :icon="expandedMedicines.includes(medicine.id) ? 'mdi-chevron-up' : 'mdi-chevron-down'" class="ml-1" />
-              </v-btn>
+            <!-- Action Buttons Footer -->
+            <div>
+              <div class="d-flex align-center justify-space-between flex-wrap pt-2" style="gap: 8px;">
+                <v-btn
+                  :to="`/medicines/${medicine.id}`"
+                  variant="outlined"
+                  color="primary"
+                  density="comfortable"
+                  prepend-icon="mdi-information-outline"
+                  class="text-none rounded-lg"
+                >
+                  View Details
+                </v-btn>
+
+                <v-btn
+                  v-if="getStockForMedicine(medicine.id).length > 0"
+                  variant="text"
+                  density="comfortable"
+                  color="primary"
+                  class="px-0 text-none font-weight-medium"
+                  @click="toggleExpand(medicine.id)"
+                >
+                  {{ expandedMedicines.includes(medicine.id) ? 'Hide pharmacies' : `Show ${getStockForMedicine(medicine.id).length} pharmacies` }}
+                  <v-icon :icon="expandedMedicines.includes(medicine.id) ? 'mdi-chevron-up' : 'mdi-chevron-down'" class="ml-1" />
+                </v-btn>
+              </div>
 
               <!-- Expanded Pharmacy Details Drawer -->
               <v-expand-transition>

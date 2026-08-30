@@ -3,6 +3,7 @@ import HomePage from '@/components/HomePage.vue'
 import MedicineSearch from '@/components/MedicineSearch.vue'
 import PharmaciesPage from '../components/PharmaciesPage.vue'
 import PharmacyProfile from '@/components/PharmacyProfile.vue'
+import MedicineDetail from '@/components/MedicineDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,7 +24,12 @@ const router = createRouter({
       path: '/pharmacy/:id',
       name: 'pharmacy-profile',
       component: PharmacyProfile,
-    }
+    },
+    {
+    path: '/medicines/:id', 
+    name: 'medicine-detail',
+    component: MedicineDetail,
+}
   ],
 })
 
