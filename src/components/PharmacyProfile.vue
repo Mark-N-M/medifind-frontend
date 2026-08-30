@@ -16,9 +16,11 @@ const medicineSearch = ref('')
 const pharmacyId = computed(() => route.params.id)
 
 // Fetch matching pharmacy or fallback gracefully
+// NOTE: route.params.id is always a string, but store IDs are numbers,
+// so we wrap p.id in String() to compare like-for-like
 const pharmacy = computed(() => {
   const list = Object.values(pharmaciesStore.pharmacies || {})
-  return list.find(p => p.id === pharmacyId.value) || {
+  return list.find(p => String(p.id) === pharmacyId.value) || {
     id: pharmacyId.value,
     name: 'Pharmacy Profile',
     area: 'Nairobi',
@@ -55,9 +57,10 @@ function getCategoryColor(category) {
 }
 
 // Get stock items for current pharmacy
+// NOTE: same string/number fix applied here for s.pharmacy_id comparison
 const pharmacyStock = computed(() => {
   const stockList = Object.values(stockStore.stock || {}).filter(
-    s => s.pharmacy_id === pharmacyId.value
+    s => String(s.pharmacy_id) === pharmacyId.value
   )
   const medicines = Object.values(medicinesStore.medicines || {})
 
