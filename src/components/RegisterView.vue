@@ -8,22 +8,39 @@ const name = ref('')
 const email = ref('')
 const password = ref('')
 const role = ref('patient') // Default role
+
+// Pharmacist specific fields
+const pharmacyName = ref('')
+const location = ref('')
+
 const loading = ref(false)
 const errorMessage = ref('')
 
 async function handleRegister() {
   if (!name.value || !email.value || !password.value) return
+  
+  // Extra validation if pharmacist is selected
+  if (role.value === 'pharmacist' && (!pharmacyName.value || !location.value)) {
+    errorMessage.value = 'Please fill in both Pharmacy Name and Location.'
+    return
+  }
 
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const data = await authService.register({
+    const payload = {
       name: name.value,
       email: email.value,
       password: password.value,
       role: role.value,
-    })
+      ...(role.value === 'pharmacist' && {
+        pharmacy_name: pharmacyName.value,
+        location: location.value,
+      }),
+    }
+
+    const data = await authService.register(payload)
 
     // If account requires admin approval (Pharmacist)
     if (data.user?.status === 'pending') {
@@ -74,6 +91,7 @@ async function handleRegister() {
             density="comfortable"
             rounded="lg"
             class="mb-3"
+            required
           />
 
           <div class="text-caption text-medium-emphasis mb-1">Email address</div>
@@ -85,6 +103,7 @@ async function handleRegister() {
             density="comfortable"
             rounded="lg"
             class="mb-3"
+            required
           />
 
           <div class="text-caption text-medium-emphasis mb-1">Password</div>
@@ -96,6 +115,7 @@ async function handleRegister() {
             density="comfortable"
             rounded="lg"
             class="mb-3"
+            required
           />
 
           <!-- Account Type / Role Input Field -->
@@ -111,8 +131,36 @@ async function handleRegister() {
             variant="outlined"
             density="comfortable"
             rounded="lg"
-            class="mb-6"
+            class="mb-3"
           />
+
+          <!-- Pharmacist-Specific Form Fields -->
+          <template v-if="role === 'pharmacist'">
+            <v-divider class="my-4" />
+            <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">Pharmacy Details</div>
+
+            <div class="text-caption text-medium-emphasis mb-1">Pharmacy Name</div>
+            <v-text-field
+              v-model="pharmacyName"
+              placeholder="e.g., City Center Pharmacy"
+              variant="outlined"
+              density="comfortable"
+              rounded="lg"
+              class="mb-3"
+              required
+            />
+
+            <div class="text-caption text-medium-emphasis mb-1">Pharmacy Location / Address</div>
+            <v-text-field
+              v-model="location"
+              placeholder="e.g., 123 Main Street, Building A"
+              variant="outlined"
+              density="comfortable"
+              rounded="lg"
+              class="mb-3"
+              required
+            />
+          </template>
 
           <v-btn
             type="submit"
@@ -122,7 +170,7 @@ async function handleRegister() {
             rounded="lg"
             elevation="0"
             :loading="loading"
-            class="text-none font-weight-bold mb-4"
+            class="text-none font-weight-bold mt-2 mb-4"
           >
             Create Account
           </v-btn>
