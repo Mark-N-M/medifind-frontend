@@ -72,7 +72,26 @@ const router = createRouter({
         // 4. Access granted
         next()
       }
-    }
+    },
+    {
+      path: '/pharmacist-dashboard',
+      name: 'PharmacistDashboard',
+      component: () => import('@/components/PharmacistDashboardView.vue'),
+      beforeEnter: (to, from, next) => {
+        const token = localStorage.getItem('token')
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+
+        if (!token) {
+          return next('/login')
+        }
+
+        if (user.role !== 'pharmacist') {
+          return next('/')
+        }
+
+        next()
+      }
+    },
   ],
 })
 
