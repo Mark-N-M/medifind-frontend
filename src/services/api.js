@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '@/router'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
@@ -20,15 +21,16 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Global response interceptor for 401 Unauthorized errors
+// Global response interceptor for 401 & 403 authorization errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      // Optional: redirect to login if unauthorized
-      window.location.href = '/login'
+      
+      // Dynamic SPA redirect without full browser reload
+      router.push('/login')
     }
     return Promise.reject(error)
   }

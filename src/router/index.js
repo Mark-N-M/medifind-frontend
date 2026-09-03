@@ -54,7 +54,25 @@ const router = createRouter({
       path: '/admin-dashboard',
       name: 'AdminDashboard',
       component: () => import('@/components/AdminDashboardView.vue'),
-    },
+      beforeEnter: (to, from, next) => {
+        // 1. Fetch current token and user from localStorage
+        const token = localStorage.getItem('token')
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+
+        // 2. Check if user is logged in
+        if (!token) {
+          return next('/login')
+        }
+
+        // 3. Check if user role is explicitly 'admin'
+        if (user.role !== 'admin') {
+          return next('/') // Redirect patients/pharmacists to home
+        }
+
+        // 4. Access granted
+        next()
+      }
+    }
   ],
 })
 
