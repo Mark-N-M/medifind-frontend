@@ -1,12 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { stockService } from '@/services/stockService'
-import axios from '@/services/api.js' 
-
+import api from '@/services/api.js' 
 const stocks = ref([])
 const availableMedicines = ref([])
+const myRequests = ref([])
 const pharmacy = ref(null)
 const loading = ref(false)
+const requestsLoading = ref(false)
 
 // Add/Edit Stock Modal State
 const dialog = ref(false)
@@ -27,6 +28,11 @@ const requestForm = ref({
   category: ''
 })
 const requestMessage = ref('')
+
+const medicineProps = (item) => ({
+  title: item.name,
+  subtitle: item.generic_name || item.category || ''
+})
 
 const loadPharmacyFromStorage = () => {
   try {
@@ -52,6 +58,18 @@ const fetchInventory = async () => {
   }
 }
 
+const fetchMyRequests = async () => {
+  requestsLoading.value = true
+  try {
+    const response = await api.get('/medicine-requests/my-requests')
+    myRequests.value = response.data
+  } catch (err) {
+    console.error('Failed to fetch medicine requests:', err)
+  } finally {
+    requestsLoading.value = false
+  }
+}
+
 const openModal = (item = null) => {
   if (item) {
     isEditing.value = true
@@ -71,14 +89,21 @@ const openModal = (item = null) => {
 
 const saveStock = async () => {
   try {
+    const payload = {
+      medicine_id: form.value.medicine_id,
+      price: parseFloat(form.value.price),
+      in_stock: Boolean(form.value.in_stock)
+    }
+
     if (isEditing.value) {
       await stockService.updateStock(currentId.value, {
-        price: form.value.price,
-        in_stock: form.value.in_stock
+        price: payload.price,
+        in_stock: payload.in_stock
       })
     } else {
-      await stockService.addStock(form.value)
+      await stockService.addStock(payload)
     }
+
     dialog.value = false
     await fetchInventory()
   } catch (err) {
@@ -90,9 +115,13 @@ const submitMedicineRequest = async () => {
   if (!requestForm.value.name) return
   requestSubmitting.value = true
   try {
-    await axios.post('/api/medicine-requests', requestForm.value)
+    await api.post('/medicine-requests', requestForm.value)
     requestMessage.value = 'Request submitted successfully! Waiting for admin approval.'
     requestForm.value = { name: '', generic_name: '', category: '' }
+    
+    // Refresh inventory and request list
+    await fetchMyRequests()
+
     setTimeout(() => {
       requestDialog.value = false
       requestMessage.value = ''
@@ -115,9 +144,20 @@ const deleteItem = async (id) => {
   }
 }
 
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'approved': return 'success'
+    case 'rejected': return 'error'
+    default: return 'warning'
+  }
+}
+
+
+
 onMounted(() => {
   loadPharmacyFromStorage()
   fetchInventory()
+  fetchMyRequests()
 })
 </script>
 
@@ -128,11 +168,10 @@ onMounted(() => {
       <div class="d-flex align-center justify-space-between mb-6">
         <div>
           <h1 class="text-h4 font-weight-bold">Pharmacy Inventory</h1>
-          <div class="text-body-2 text-medium-emphasis">Manage medicine stock and pricing</div>
+          <div class="text-body-2 text-medium-emphasis">Manage medicine stock, pricing, and catalog requests</div>
         </div>
 
         <div class="d-flex gap-2">
-          <!-- Request New Medicine Button -->
           <v-btn 
             variant="outlined" 
             color="primary" 
@@ -157,7 +196,8 @@ onMounted(() => {
       </v-card>
 
       <!-- Inventory Table -->
-      <v-card variant="outlined" rounded="xl" class="pa-6">
+      <v-card variant="outlined" rounded="xl" class="pa-6 mb-8">
+        <div class="text-h6 font-weight-bold mb-4">Stock Inventory</div>
         <v-progress-linear v-if="loading" indeterminate color="primary" class="mb-4" />
 
         <v-table v-if="stocks.length > 0">
@@ -200,6 +240,51 @@ onMounted(() => {
         </div>
       </v-card>
 
+      <!-- NEW CONTAINER: Medicine Requests Tracker -->
+      <v-card variant="outlined" rounded="xl" class="pa-6">
+        <div class="d-flex align-center justify-space-between mb-4">
+          <div>
+            <div class="text-h6 font-weight-bold">Submitted Medicine Requests</div>
+            <div class="text-caption text-medium-emphasis">Track requests submitted to the Admin to add new medicines to the platform catalog</div>
+          </div>
+          <v-btn size="small" variant="text" icon="mdi-refresh" @click="fetchMyRequests" />
+        </div>
+
+        <v-progress-linear v-if="requestsLoading" indeterminate color="primary" class="mb-4" />
+
+        <v-table v-if="myRequests.length > 0">
+          <thead>
+            <tr>
+              <th class="text-left">Requested Medicine</th>
+              <th class="text-left">Generic Name</th>
+              <th class="text-left">Category</th>
+              <th class="text-left">Requested On</th>
+              <th class="text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="req in myRequests" :key="req.id">
+              <td class="font-weight-medium">{{ req.name }}</td>
+              <td class="text-medium-emphasis">{{ req.generic_name || '—' }}</td>
+              <td>{{ req.category || 'General' }}</td>
+              <td class="text-caption text-medium-emphasis">
+                {{ new Date(req.created_at).toLocaleDateString() }}
+              </td>
+              <td>
+                <v-chip size="small" :color="getStatusColor(req.status)" variant="tonal" class="text-capitalize">
+                  {{ req.status }}
+                </v-chip>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+
+        <div v-else-if="!requestsLoading" class="text-center text-medium-emphasis py-6">
+          <v-icon icon="mdi-file-document-outline" size="36" class="mb-2" />
+          <div class="text-body-2">You haven't requested any new medicines yet.</div>
+        </div>
+      </v-card>
+
       <!-- Add/Edit Stock Dialog -->
       <v-dialog v-model="dialog" max-width="500px">
         <v-card rounded="xl" class="pa-6">
@@ -208,26 +293,22 @@ onMounted(() => {
           </v-card-title>
 
           <v-form @submit.prevent="saveStock">
-            <!-- Searchable Autocomplete -->
             <v-autocomplete
-              v-if="!isEditing"
-              v-model="form.medicine_id"
-              :items="availableMedicines"
-              item-title="name"
-              item-value="id"
-              label="Search & Select Medicine"
-              placeholder="Type medicine name..."
-              variant="outlined"
-              rounded="lg"
-              density="comfortable"
-              class="mb-3"
-              clearable
-              required
-            >
-              <template v-slot:item="{ props, item }">
-                <v-list-item v-bind="props" :subtitle="item.raw.generic_name || item.raw.category" />
-              </template>
-            </v-autocomplete>
+            v-if="!isEditing"
+            v-model="form.medicine_id"
+            :items="availableMedicines"
+            :item-props="medicineProps"
+            item-value="id"
+            label="Search & Select Medicine"
+            placeholder="Type medicine name..."
+            variant="outlined"
+            rounded="lg"
+            density="comfortable"
+            class="mb-3"
+            clearable
+            required
+          >
+          </v-autocomplete>
 
             <v-text-field
               v-model="form.price"
