@@ -6,6 +6,7 @@ import PharmacyProfile from '@/components/PharmacyProfile.vue'
 import MedicineDetail from '@/components/MedicineDetail.vue'
 import LoginView from '@/components/LoginView.vue'
 import RegisterView from '@/components/RegisterView.vue'
+import UserProfile from '@/components/UserProfile.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,6 +45,11 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: RegisterView,
+    },
+    {
+      path: '/profile',
+      name: 'Profile',
+      component: UserProfile,
     },
     {
       path: '/pending-approval',
