@@ -1,36 +1,67 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useMedicinesStore } from '../stores/medicines'
-import { useStockStore } from '../stores/stock'
-import { usePharmaciesStore } from '../stores/pharmacies'
+import api from '@/services/api'
 
 const route = useRoute()
-const medicinesStore = useMedicinesStore()
-const stockStore = useStockStore()
-const pharmaciesStore = usePharmaciesStore()
 
-// Local state for filtering/sorting pharmacies within this view
+const loading = ref(true)
+const medicine = ref(null)
+const pharmacyStockList = ref([])
+
 const pharmacySearch = ref('')
 const selectedSort = ref('Price: Low to High')
 
 const sortOptions = [
   'Price: Low to High',
   'Price: High to Low',
-  'Stock: High to Low',
   'Alphabetical (A-Z)'
 ]
 
-// Parse route param dynamically
-const medicineId = computed(() => Number(route.params.id) || route.params.id)
+const medicineId = computed(() => route.params.id)
 
-// Retrieve medicine record matching the route param
-const medicine = computed(() => {
-  const medicines = Object.values(medicinesStore.medicines || {})
-  return medicines.find(m => m.id === medicineId.value) || null
-})
+const fetchMedicineDetails = async () => {
+  if (!medicineId.value) return
+  
+  loading.value = true
+  try {
+    const response = await api.get(`/stocks/medicine/${medicineId.value}`)
+    const stocks = response.data.data || []
 
-// Category badge helper
+    // Set the base medicine details
+    medicine.value = response.data.medicine || (stocks.length > 0 ? stocks[0].medicine : null)
+
+    // Map pharmacy stock items
+    pharmacyStockList.value = stocks.map(stock => ({
+      id: stock.id,
+      pharmacyId: stock.pharmacy_id || stock.pharmacy?.id,
+      name: stock.pharmacy?.name || 'Unknown Pharmacy',
+      area: stock.pharmacy?.location || 'Nairobi',
+      verified: Boolean(stock.pharmacy?.verified),
+      price: Number(stock.price),
+      available: Boolean(stock.in_stock)
+    }))
+
+    // If medicine object wasn't in response, fetch base medicine directly
+    if (!medicine.value) {
+      const medResponse = await api.get(`/medicines/${medicineId.value}`)
+      medicine.value = medResponse.data.data || medResponse.data
+    }
+
+  } catch (err) {
+    try {
+      const medResponse = await api.get(`/medicines/${medicineId.value}`)
+      medicine.value = medResponse.data.data || medResponse.data
+      pharmacyStockList.value = []
+    } catch (fallbackErr) {
+      medicine.value = null
+      pharmacyStockList.value = []
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
 function getCategoryColor(category) {
   switch (category?.toLowerCase()) {
     case 'antibiotics': return 'emerald'
@@ -42,32 +73,6 @@ function getCategoryColor(category) {
   }
 }
 
-// Map stock items to pharmacy details for this specific medicine
-const pharmacyStockList = computed(() => {
-  if (!medicine.value) return []
-
-  const stockEntries = Object.values(stockStore.stock || {}).filter(
-    s => s.medicine_id === medicine.value.id
-  )
-  const pharmacies = Object.values(pharmaciesStore.pharmacies || {})
-
-  return stockEntries.map(stock => {
-    const p = pharmacies.find(pharm => pharm.id === stock.pharmacy_id) || {}
-    return {
-      id: stock.id,
-      pharmacyId: p.id,
-      name: p.name || 'Unknown Pharmacy',
-      area: p.area || 'Nairobi',
-      address: p.address || '',
-      verified: p.verified || false,
-      price: stock.price,
-      stockCount: stock.stock_count,
-      available: stock.available && stock.stock_count > 0
-    }
-  })
-})
-
-// Search & Sort implementation for pharmacies stocking this medicine
 const filteredPharmacies = computed(() => {
   let list = [...pharmacyStockList.value]
 
@@ -82,11 +87,13 @@ const filteredPharmacies = computed(() => {
   return list.sort((a, b) => {
     if (selectedSort.value === 'Price: Low to High') return a.price - b.price
     if (selectedSort.value === 'Price: High to Low') return b.price - a.price
-    if (selectedSort.value === 'Stock: High to Low') return b.stockCount - a.stockCount
     if (selectedSort.value === 'Alphabetical (A-Z)') return a.name.localeCompare(b.name)
     return 0
   })
 })
+
+watch(() => route.params.id, fetchMedicineDetails)
+onMounted(fetchMedicineDetails)
 </script>
 
 <template>
@@ -105,7 +112,6 @@ const filteredPharmacies = computed(() => {
           <router-link to="/pharmacies" class="text-body-2 text-medium-emphasis text-decoration-none mr-6">
             Pharmacies
           </router-link>
-          <span class="text-body-2 text-medium-emphasis cursor-pointer">Login</span>
         </div>
       </div>
     </v-container>
@@ -122,14 +128,20 @@ const filteredPharmacies = computed(() => {
         </router-link>
       </div>
 
+      <!-- LOADING STATE -->
+      <div v-if="loading" class="text-center py-12">
+        <v-progress-circular indeterminate color="primary" size="48" />
+        <div class="text-body-2 text-medium-emphasis mt-4">Loading medicine details...</div>
+      </div>
+
       <!-- MEDICINE FOUND -->
-      <template v-if="medicine">
+      <template v-else-if="medicine">
         <!-- Medicine Header -->
         <div class="d-flex justify-space-between align-start flex-wrap mb-6" style="gap: 16px;">
           <div>
             <h1 class="text-h4 font-weight-bold mb-1">{{ medicine.name }}</h1>
             <div class="text-body-1 text-medium-emphasis mb-3">
-              {{ medicine.genericName }}
+              {{ medicine.generic_name || medicine.genericName }}
             </div>
             <div class="text-body-2 text-medium-emphasis">
               {{ pharmacyStockList.length }} {{ pharmacyStockList.length === 1 ? 'pharmacy' : 'pharmacies' }} currently stock this medicine
@@ -152,7 +164,7 @@ const filteredPharmacies = computed(() => {
             <v-card variant="outlined" class="pa-1 search-card" rounded="xl">
               <v-text-field
                 v-model="pharmacySearch"
-                placeholder="Search for another medicine..."
+                placeholder="Search pharmacies by name or area..."
                 variant="plain"
                 hide-details
                 clearable
@@ -177,6 +189,7 @@ const filteredPharmacies = computed(() => {
         <!-- Pharmacy Cards Section -->
         <div class="text-h6 font-weight-bold mb-4">Available at these pharmacies</div>
 
+        <!-- PHARMACIES LISTING MEDICINE WITH PRICES -->
         <v-row v-if="filteredPharmacies.length > 0">
           <v-col
             v-for="item in filteredPharmacies"
@@ -186,7 +199,6 @@ const filteredPharmacies = computed(() => {
           >
             <v-card variant="outlined" rounded="lg" class="pa-5 h-100 d-flex flex-column justify-space-between">
               <div>
-                <!-- Pharmacy Name & Verification Badge -->
                 <div class="d-flex justify-space-between align-start mb-1">
                   <div>
                     <div class="text-subtitle-1 font-weight-bold">{{ item.name }}</div>
@@ -207,10 +219,13 @@ const filteredPharmacies = computed(() => {
                   </v-chip>
                 </div>
 
-                <!-- Price and Availability Stock Badge -->
+                <!-- Price and Availability display -->
                 <div class="d-flex justify-space-between align-end mt-6 mb-4">
-                  <div class="text-h6 font-weight-bold text-primary">
-                    KES {{ item.price }}
+                  <div>
+                    <div class="text-caption text-medium-emphasis">Price</div>
+                    <div class="text-h6 font-weight-bold text-primary">
+                      KES {{ item.price.toLocaleString() }}
+                    </div>
                   </div>
 
                   <v-chip
@@ -220,7 +235,7 @@ const filteredPharmacies = computed(() => {
                     variant="tonal"
                     class="font-weight-medium"
                   >
-                    In stock · {{ item.stockCount }}
+                    In stock
                   </v-chip>
                   <v-chip
                     v-else
@@ -234,7 +249,6 @@ const filteredPharmacies = computed(() => {
                 </div>
               </div>
 
-              <!-- View Pharmacy Action -->
               <v-btn
                 :to="`/pharmacy/${item.pharmacyId}`"
                 variant="outlined"
@@ -248,10 +262,19 @@ const filteredPharmacies = computed(() => {
           </v-col>
         </v-row>
 
-        <v-card v-else variant="outlined" rounded="lg" class="pa-8 text-center">
+        <!-- NO STOCKS MATCH SEARCH -->
+        <v-card v-else-if="pharmacyStockList.length > 0" variant="outlined" rounded="lg" class="pa-8 text-center">
           <v-icon icon="mdi-store-off-outline" size="40" color="grey" class="mb-2" />
           <div class="text-body-1 font-weight-medium text-medium-emphasis">
             No pharmacies found matching "{{ pharmacySearch }}"
+          </div>
+        </v-card>
+
+        <!-- NO PHARMACIES HAVE STOCKED THIS MEDICINE YET -->
+        <v-card v-else variant="outlined" rounded="lg" class="pa-8 text-center">
+          <v-icon icon="mdi-package-variant-closed text-medium-emphasis" size="40" color="grey" class="mb-2" />
+          <div class="text-body-1 font-weight-medium text-medium-emphasis">
+            No pharmacies currently have this medicine in stock.
           </div>
         </v-card>
       </template>
@@ -274,8 +297,5 @@ const filteredPharmacies = computed(() => {
 .search-card {
   border-color: rgba(0, 0, 0, 0.12);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
-.cursor-pointer {
-  cursor: pointer;
 }
 </style>

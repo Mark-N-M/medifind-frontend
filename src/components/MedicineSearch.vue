@@ -23,7 +23,6 @@ const fetchMedicines = async () => {
         in_stock_only: inStockOnly.value
       }
     })
-    // Support either direct array or standard backend response wrapper
     medicines.value = response.data?.data || response.data
   } catch (err) {
     console.error('Failed to fetch search results:', err)
@@ -32,13 +31,12 @@ const fetchMedicines = async () => {
   }
 }
 
-// Router Push Navigation Helpers
+// Navigates directly to /pharmacy/:id for the selected pharmacy
 const goToPharmacy = (pharmacy) => {
-  // Extract ID dynamically across common backend key names
   const pharmacyId = pharmacy?.pharmacy_id || pharmacy?.id || pharmacy?.pharmacy?.id
 
   if (!pharmacyId) {
-    console.error('Pharmacy ID missing from payload item:', pharmacy)
+    console.error('Missing pharmacy ID from item:', pharmacy)
     return
   }
 
@@ -136,7 +134,7 @@ onMounted(() => {
           </div>
 
           <div>
-            <!-- View Details Link (Pushes to /medicines/:id) -->
+            <!-- View Details Link -->
             <v-btn
               variant="text"
               color="primary"
