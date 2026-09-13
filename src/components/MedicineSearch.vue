@@ -23,9 +23,17 @@ const fetchMedicines = async () => {
         in_stock_only: inStockOnly.value
       }
     })
-    medicines.value = response.data?.data || response.data
+
+    console.log('API response:', response.data)
+
+    const payload = response.data?.data ?? response.data ?? []
+    medicines.value = Array.isArray(payload) ? payload : []
   } catch (err) {
     console.error('Failed to fetch search results:', err)
+    console.log('Status:', err.response?.status)
+    console.log('Response data:', err.response?.data)
+    console.log('Error message:', err.message)
+    medicines.value = []
   } finally {
     loading.value = false
   }

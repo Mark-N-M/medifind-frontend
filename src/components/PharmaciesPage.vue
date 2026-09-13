@@ -9,9 +9,17 @@ const fetchPharmacies = async () => {
   loading.value = true
   try {
     const response = await api.get('/public/pharmacies')
-    pharmacies.value = response.data
+
+    console.log('Pharmacies API response:', response.data)
+
+    const payload = response.data?.data ?? response.data ?? []
+    pharmacies.value = Array.isArray(payload) ? payload : []
   } catch (err) {
     console.error('Failed to load pharmacies:', err)
+    console.log('Status:', err.response?.status)
+    console.log('Response data:', err.response?.data)
+    console.log('Error message:', err.message)
+    pharmacies.value = []
   } finally {
     loading.value = false
   }

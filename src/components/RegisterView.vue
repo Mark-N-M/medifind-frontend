@@ -12,6 +12,8 @@ const role = ref('patient') // Default role
 // Pharmacist specific fields
 const pharmacyName = ref('')
 const location = ref('')
+const latitude = ref('')
+const longitude = ref('')
 
 const loading = ref(false)
 const errorMessage = ref('')
@@ -20,10 +22,13 @@ async function handleRegister() {
   if (!name.value || !email.value || !password.value) return
   
   // Extra validation if pharmacist is selected
-  if (role.value === 'pharmacist' && (!pharmacyName.value || !location.value)) {
-    errorMessage.value = 'Please fill in both Pharmacy Name and Location.'
-    return
-  }
+if (
+  role.value === 'pharmacist' &&
+  (!pharmacyName.value || !location.value || !latitude.value || !longitude.value)
+) {
+  errorMessage.value = 'Please fill in Pharmacy Name, Address, Latitude, and Longitude.'
+  return
+}
 
   loading.value = true
   errorMessage.value = ''
@@ -37,6 +42,8 @@ async function handleRegister() {
       ...(role.value === 'pharmacist' && {
         pharmacy_name: pharmacyName.value,
         location: location.value,
+        latitude: latitude.value,
+        longitude: longitude.value,
       }),
     }
 
@@ -159,6 +166,28 @@ async function handleRegister() {
               rounded="lg"
               class="mb-3"
               required
+            />
+
+            <div class="text-caption text-medium-emphasis mb-1">Latitude</div>
+            <v-text-field
+              v-model="latitude"
+              type="number"
+              placeholder="-1.2833"
+              variant="outlined"
+              density="comfortable"
+              rounded="lg"
+              class="mb-3"
+            />
+
+            <div class="text-caption text-medium-emphasis mb-1">Longitude</div>
+            <v-text-field
+              v-model="longitude"
+              type="number"
+              placeholder="36.8167"
+              variant="outlined"
+              density="comfortable"
+              rounded="lg"
+              class="mb-3"
             />
           </template>
 

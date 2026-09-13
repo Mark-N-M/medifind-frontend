@@ -25,13 +25,14 @@ const fetchMedicineDetails = async () => {
   
   loading.value = true
   try {
-    const response = await api.get(`/stocks/medicine/${medicineId.value}`)
+    // Hits existing backend route: GET /api/medicines/{medicineId}/pharmacies
+    const response = await api.get(`/medicines/${medicineId.value}/pharmacies`)
     const stocks = response.data.data || []
 
-    // Set the base medicine details
+    // Set top-level medicine details directly from payload
     medicine.value = response.data.medicine || (stocks.length > 0 ? stocks[0].medicine : null)
 
-    // Map pharmacy stock items
+    // Populate pharmacy list with prices and location details
     pharmacyStockList.value = stocks.map(stock => ({
       id: stock.id,
       pharmacyId: stock.pharmacy_id || stock.pharmacy?.id,
@@ -42,21 +43,10 @@ const fetchMedicineDetails = async () => {
       available: Boolean(stock.in_stock)
     }))
 
-    // If medicine object wasn't in response, fetch base medicine directly
-    if (!medicine.value) {
-      const medResponse = await api.get(`/medicines/${medicineId.value}`)
-      medicine.value = medResponse.data.data || medResponse.data
-    }
-
   } catch (err) {
-    try {
-      const medResponse = await api.get(`/medicines/${medicineId.value}`)
-      medicine.value = medResponse.data.data || medResponse.data
-      pharmacyStockList.value = []
-    } catch (fallbackErr) {
-      medicine.value = null
-      pharmacyStockList.value = []
-    }
+    console.error('Failed to load pharmacy stocks:', err)
+    medicine.value = null
+    pharmacyStockList.value = []
   } finally {
     loading.value = false
   }
