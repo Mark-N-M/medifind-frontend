@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/services/api.js'
 
+const router = useRouter()
 const pharmacies = ref([])
 const loading = ref(false)
 
@@ -25,6 +27,11 @@ const fetchPharmacies = async () => {
   }
 }
 
+const goToPharmacyProfile = (pharmacyId) => {
+  if (!pharmacyId) return
+  router.push({ name: 'pharmacy-profile', params: { id: pharmacyId } })
+}
+
 onMounted(() => {
   fetchPharmacies()
 })
@@ -39,7 +46,13 @@ onMounted(() => {
 
     <v-row v-if="pharmacies.length > 0">
       <v-col v-for="p in pharmacies" :key="p.id" cols="12" md="4">
-        <v-card variant="outlined" rounded="xl" class="pa-5">
+        <v-card
+          variant="outlined"
+          rounded="xl"
+          class="pa-5"
+          style="cursor: pointer;"
+          @click="goToPharmacyProfile(p.id)"
+        >
           <v-icon icon="mdi-store" size="32" color="primary" class="mb-2" />
           <div class="text-h6 font-weight-bold">{{ p.name }}</div>
           <div class="text-body-2 text-medium-emphasis mb-3">{{ p.location || 'Nairobi' }}</div>

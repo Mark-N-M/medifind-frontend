@@ -12,23 +12,66 @@ const role = ref('patient') // Default role
 // Pharmacist specific fields
 const pharmacyName = ref('')
 const location = ref('')
+const phone = ref('')
 const latitude = ref('')
 const longitude = ref('')
 
 const loading = ref(false)
 const errorMessage = ref('')
 
+// Geolocation state for the "Use My Current Location" button
+const locating = ref(false)
+const locationError = ref('')
+
+function useCurrentLocation() {
+  locationError.value = ''
+
+  if (!navigator.geolocation) {
+    locationError.value = 'Geolocation is not supported by your browser.'
+    return
+  }
+
+  locating.value = true
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      latitude.value = position.coords.latitude.toFixed(6)
+      longitude.value = position.coords.longitude.toFixed(6)
+      locating.value = false
+    },
+    (err) => {
+      if (err.code === 1) {
+        locationError.value = 'Location permission denied. Please allow location access or enter coordinates manually.'
+      } else if (err.code === 2) {
+        locationError.value = 'Unable to determine your location. Please enter coordinates manually.'
+      } else {
+        locationError.value = 'Location request timed out. Please try again.'
+      }
+      locating.value = false
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  )
+}
+
 async function handleRegister() {
   if (!name.value || !email.value || !password.value) return
-  
-  // Extra validation if pharmacist is selected
-if (
-  role.value === 'pharmacist' &&
-  (!pharmacyName.value || !location.value || !latitude.value || !longitude.value)
-) {
-  errorMessage.value = 'Please fill in Pharmacy Name, Address, Latitude, and Longitude.'
-  return
-}
+
+  if (locating.value) {
+    errorMessage.value = 'Still detecting your location — please wait a moment and try again.'
+    return
+  }
+
+  if (
+    role.value === 'pharmacist' &&
+    (!pharmacyName.value || !location.value || !phone.value || !latitude.value || !longitude.value)
+  ) {
+    errorMessage.value = 'Please fill in Pharmacy Name, Address, Phone Number, Latitude, and Longitude.'
+    return
+  }
 
   loading.value = true
   errorMessage.value = ''
@@ -42,6 +85,7 @@ if (
       ...(role.value === 'pharmacist' && {
         pharmacy_name: pharmacyName.value,
         location: location.value,
+        phone: phone.value,
         latitude: latitude.value,
         longitude: longitude.value,
       }),
@@ -49,13 +93,11 @@ if (
 
     const data = await authService.register(payload)
 
-    // If account requires admin approval (Pharmacist)
     if (data.user?.status === 'pending') {
       router.push('/pending-approval')
       return
     }
 
-    // Standard patient flow (Auto-approved)
     if (data.token) {
       localStorage.setItem('token', data.token)
     }
@@ -125,7 +167,6 @@ if (
             required
           />
 
-          <!-- Account Type / Role Input Field -->
           <div class="text-caption text-medium-emphasis mb-1">Account Type</div>
           <v-select
             v-model="role"
@@ -141,7 +182,6 @@ if (
             class="mb-3"
           />
 
-          <!-- Pharmacist-Specific Form Fields -->
           <template v-if="role === 'pharmacist'">
             <v-divider class="my-4" />
             <div class="text-subtitle-2 font-weight-bold mb-3 text-primary">Pharmacy Details</div>
@@ -168,10 +208,47 @@ if (
               required
             />
 
-            <div class="text-caption text-medium-emphasis mb-1">Latitude</div>
+            <div class="text-caption text-medium-emphasis mb-1">Pharmacy Phone Number</div>
+            <v-text-field
+              v-model="phone"
+              type="tel"
+              placeholder="e.g., 0712345678"
+              variant="outlined"
+              density="comfortable"
+              rounded="lg"
+              class="mb-3"
+              required
+            />
+
+            <div class="text-caption text-medium-emphasis mb-1">Pharmacy Coordinates</div>
+
+            <v-btn
+              variant="tonal"
+              color="primary"
+              prepend-icon="mdi-crosshairs-gps"
+              size="small"
+              rounded="lg"
+              class="text-none mb-3"
+              :loading="locating"
+              @click="useCurrentLocation"
+            >
+              Use My Current Location
+            </v-btn>
+
+            <v-alert
+              v-if="locationError"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+            >
+              {{ locationError }}
+            </v-alert>
+
             <v-text-field
               v-model="latitude"
               type="number"
+              label="Latitude"
               placeholder="-1.2833"
               variant="outlined"
               density="comfortable"
@@ -179,10 +256,10 @@ if (
               class="mb-3"
             />
 
-            <div class="text-caption text-medium-emphasis mb-1">Longitude</div>
             <v-text-field
               v-model="longitude"
               type="number"
+              label="Longitude"
               placeholder="36.8167"
               variant="outlined"
               density="comfortable"
@@ -199,6 +276,7 @@ if (
             rounded="lg"
             elevation="0"
             :loading="loading"
+            :disabled="locating"
             class="text-none font-weight-bold mt-2 mb-4"
           >
             Create Account

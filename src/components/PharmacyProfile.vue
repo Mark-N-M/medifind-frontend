@@ -9,6 +9,7 @@ const router = useRouter()
 const pharmacy = ref(null)
 const medications = ref([])
 const error = ref(null)
+const loading = ref(false)
 
 const fetchPharmacyProfile = async () => {
   const pharmacyId = route.params.id
@@ -24,7 +25,6 @@ const fetchPharmacyProfile = async () => {
     const data = response.data?.data || response.data
     
     pharmacy.value = data
-    // Handles medications list if attached directly or nested inside stock
     medications.value = data.medications || data.stocks || []
   } catch (err) {
     console.error('Failed to load pharmacy profile:', err)
@@ -54,10 +54,8 @@ const openDirections = () => {
   let mapsUrl = ''
 
   if (latitude && longitude) {
-    // Exact GPS navigation target
     mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
   } else {
-    // Address-based search fallback
     const query = encodeURIComponent(`${name} ${location || ''} Nairobi Kenya`)
     mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${query}`
   }
@@ -68,7 +66,6 @@ const openDirections = () => {
 
 <template>
   <v-container style="max-width: 1000px;" class="py-8">
-    <!-- Back Button -->
     <v-btn
       variant="text"
       prepend-icon="mdi-arrow-left"
@@ -78,17 +75,13 @@ const openDirections = () => {
       Back to Search
     </v-btn>
 
-    <!-- Loading State -->
     <v-progress-linear v-if="loading" indeterminate color="primary" class="my-8" />
 
-    <!-- Error State -->
     <v-alert v-else-if="error" type="error" variant="tonal" rounded="xl" class="mb-6">
       {{ error }}
     </v-alert>
 
-    <!-- Profile View -->
     <div v-else-if="pharmacy">
-      <!-- Header Card -->
       <v-card variant="outlined" rounded="xl" class="pa-6 mb-8">
         <div class="d-flex justify-space-between align-start flex-wrap ga-4">
           <div>
@@ -101,14 +94,12 @@ const openDirections = () => {
               <span>{{ pharmacy.location || pharmacy.address || 'Location unavailable' }}</span>
             </div>
 
-            <!-- Phone Number Display with Fallback -->
             <div class="text-body-2 text-medium-emphasis d-flex align-center">
               <v-icon icon="mdi-phone" size="small" class="mr-1" />
               <span>{{ pharmacy.phone || 'No phone number listed' }}</span>
             </div>
           </div>
 
-          <!-- Add this next to your phone/location details in PharmacyProfile.vue -->
           <v-btn
             variant="tonal"
             color="primary"
@@ -121,7 +112,6 @@ const openDirections = () => {
             Get Directions
           </v-btn>
 
-          <!-- Dynamic Verification Badge -->
           <v-chip
             :color="pharmacy.verified ? 'success' : 'grey'"
             size="large"
@@ -134,12 +124,10 @@ const openDirections = () => {
         </div>
       </v-card>
 
-      <!-- Inventory Title -->
       <h2 class="text-h5 font-weight-bold mb-4">
         Available Medication ({{ medications.length }})
       </h2>
 
-      <!-- Medication Inventory List -->
       <v-row v-if="medications.length > 0">
         <v-col v-for="item in medications" :key="item.id" cols="12" md="6">
           <v-card variant="outlined" rounded="xl" class="pa-5 h-100 d-flex flex-column justify-space-between">
