@@ -1,7 +1,7 @@
 import axios from 'axios'
 import router from '@/router'
 
-// Fallback to PC IP address if VITE_API_BASE_URL is undefined
+
 const fallbackBaseURL = 'http://127.0.0.1:8000/api'
 
 const api = axios.create({

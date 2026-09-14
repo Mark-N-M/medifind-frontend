@@ -113,13 +113,13 @@ const openDirections = () => {
           </v-btn>
 
           <v-chip
-            :color="pharmacy.verified ? 'success' : 'green'"
+            :color="pharmacy.verified ? 'success' : 'gray'"
             size="large"
             variant="tonal"
             rounded="lg"
           >
-            <v-icon :icon="pharmacy.verified ? 'mdi-check-decagram' : 'mdi-check-decagram'" start />
-            {{ pharmacy.verified ? 'Verified Pharmacy' : 'Verified Pharmacy' }}
+            <v-icon :icon="pharmacy.verified ? 'mdi-check-decagram' : 'mdi-alert-circle-outline'" start />
+            {{ pharmacy.verified ? 'Verified Pharmacy' : 'Unverified Listing' }}
           </v-chip>
         </div>
       </v-card>
