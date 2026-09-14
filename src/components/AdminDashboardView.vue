@@ -24,7 +24,6 @@ const fetchPendingPharmacists = async () => {
   pharmacistsLoading.value = true
   try {
     const response = await api.get('/admin/pending-pharmacists')
-    // Extract the users array from response.data.users
     pendingPharmacists.value = response.data.users || response.data || []
   } catch (err) {
     showAlert('Failed to fetch pending pharmacist accounts.', 'error')
@@ -101,6 +100,68 @@ const rejectMedicineRequest = async (id) => {
   }
 }
 
+// Global Catalog State
+const catalogMedicines = ref([])
+const catalogLoading = ref(false)
+
+// Edit dialog state
+const editDialog = ref(false)
+const editingMedicine = ref({ id: null, name: '', generic_name: '', category: '' })
+
+const fetchCatalog = async () => {
+  catalogLoading.value = true
+  try {
+    const response = await api.get('/medicines')
+    catalogMedicines.value = response.data || []
+  } catch (err) {
+    showAlert('Failed to fetch medicine catalog.', 'error')
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+const openEditDialog = (medicine) => {
+  editingMedicine.value = {
+    id: medicine.id,
+    name: medicine.name,
+    generic_name: medicine.generic_name || '',
+    category: medicine.category || '',
+  }
+  editDialog.value = true
+}
+
+const saveMedicineEdit = async () => {
+  actionLoading.value = editingMedicine.value.id
+  try {
+    await api.put(`/admin/medicines/${editingMedicine.value.id}`, {
+      name: editingMedicine.value.name,
+      generic_name: editingMedicine.value.generic_name,
+      category: editingMedicine.value.category,
+    })
+    showAlert('Medicine updated successfully!', 'success')
+    editDialog.value = false
+    await fetchCatalog()
+  } catch (err) {
+    showAlert('Failed to update medicine.', 'error')
+  } finally {
+    actionLoading.value = null
+  }
+}
+
+const deleteMedicine = async (medicine) => {
+  if (!confirm(`Delete "${medicine.name}" from the catalog? This cannot be undone.`)) return
+  actionLoading.value = medicine.id
+  try {
+    await api.delete(`/admin/medicines/${medicine.id}`)
+    showAlert('Medicine deleted from catalog.', 'warning')
+    await fetchCatalog()
+  } catch (err) {
+    showAlert('Failed to delete medicine.', 'error')
+  } finally {
+    actionLoading.value = null
+  }
+}
+
 const showAlert = (msg, type = 'success') => {
   alertMessage.value = msg
   alertType.value = type
@@ -118,6 +179,7 @@ const getStatusColor = (status) => {
 onMounted(() => {
   fetchPendingPharmacists()
   fetchRequests()
+  fetchCatalog()
 })
 </script>
 
@@ -150,7 +212,7 @@ onMounted(() => {
       </v-tabs>
 
       <v-window v-model="activeTab">
-        
+
         <!-- TAB 1: Pharmacist Account Approvals -->
         <v-window-item value="pharmacists">
           <v-card variant="outlined" rounded="xl" class="pa-6">
@@ -306,12 +368,105 @@ onMounted(() => {
         <!-- TAB 3: Global Catalog -->
         <v-window-item value="catalog">
           <v-card variant="outlined" rounded="xl" class="pa-6">
-            <div class="text-h6 font-weight-bold mb-2">Global Medicine Catalog</div>
-            <div class="text-body-2 text-medium-emphasis">View and directly manage all registered medicines in the platform catalog.</div>
+            <div class="d-flex justify-space-between align-start flex-wrap ga-2 mb-2">
+              <div>
+                <div class="text-h6 font-weight-bold">Global Medicine Catalog</div>
+                <div class="text-body-2 text-medium-emphasis">View and directly manage all registered medicines in the platform catalog.</div>
+              </div>
+              <v-chip color="primary" variant="tonal">{{ catalogMedicines.length }} Medicines</v-chip>
+            </div>
+
+            <v-progress-linear v-if="catalogLoading" indeterminate color="primary" class="my-4" />
+
+            <v-table v-if="!catalogLoading && catalogMedicines.length > 0" class="mt-4">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Generic Name</th>
+                  <th>Category</th>
+                  <th>Pharmacies Stocking</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="med in catalogMedicines" :key="med.id">
+                  <td class="font-weight-medium">{{ med.name }}</td>
+                  <td>{{ med.generic_name || '—' }}</td>
+                  <td>
+                    <v-chip size="small" variant="tonal" color="primary">{{ med.category || 'Uncategorized' }}</v-chip>
+                  </td>
+                  <td>{{ med.stocks?.length || 0 }}</td>
+                  <td class="text-right">
+                    <v-btn
+                      icon="mdi-pencil"
+                      variant="text"
+                      size="small"
+                      color="primary"
+                      @click="openEditDialog(med)"
+                    />
+                    <v-btn
+                      icon="mdi-delete"
+                      variant="text"
+                      size="small"
+                      color="error"
+                      :loading="actionLoading === med.id"
+                      @click="deleteMedicine(med)"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+
+            <div v-else-if="!catalogLoading" class="text-center text-medium-emphasis py-8">
+              <v-icon icon="mdi-pill-off" size="48" class="mb-2" />
+              <div class="text-h6 font-weight-bold text-high-emphasis">No medicines in the catalog yet</div>
+              <div class="text-body-2">Approved medicine requests will appear here automatically.</div>
+            </div>
           </v-card>
         </v-window-item>
 
       </v-window>
+
+      <!-- Edit Medicine Dialog -->
+      <v-dialog v-model="editDialog" max-width="450">
+        <v-card rounded="xl" class="pa-4">
+          <v-card-title class="font-weight-bold">Edit Medicine</v-card-title>
+          <v-card-text>
+            <v-text-field
+              v-model="editingMedicine.name"
+              label="Name"
+              variant="outlined"
+              density="comfortable"
+              class="mb-2"
+            />
+            <v-text-field
+              v-model="editingMedicine.generic_name"
+              label="Generic Name"
+              variant="outlined"
+              density="comfortable"
+              class="mb-2"
+            />
+            <v-text-field
+              v-model="editingMedicine.category"
+              label="Category"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="editDialog = false">Cancel</v-btn>
+            <v-btn
+              color="primary"
+              variant="flat"
+              :loading="actionLoading === editingMedicine.id"
+              @click="saveMedicineEdit"
+            >
+              Save Changes
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-container>
   </v-sheet>
 </template>
